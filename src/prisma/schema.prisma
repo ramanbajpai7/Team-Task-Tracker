@@ -1,0 +1,91 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  MANAGER
+  MEMBER
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  IN_REVIEW
+  DONE
+  BLOCKED
+}
+
+// ─── Models ───────────────────────────────────────────────────────────────────
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  users User[]
+  tasks Task[]
+
+  @@map("organizations")
+}
+
+model User {
+  id               String   @id @default(uuid())
+  email            String   @unique
+  passwordHash     String   @map("password_hash")
+  name             String
+  role             Role     @default(MEMBER)
+  organizationId   String   @map("organization_id")
+  refreshTokenHash String?  @map("refresh_token_hash")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  organization  Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assignedTasks Task[]       @relation("TaskAssignee")
+  createdTasks  Task[]       @relation("TaskCreator")
+
+  @@index([organizationId], name: "idx_user_org")
+  @@map("users")
+}
+
+model Task {
+  id             String     @id @default(uuid())
+  title          String
+  description    String?
+  priority       Priority   @default(MEDIUM)
+  status         TaskStatus @default(TODO)
+  assigneeId     String?    @map("assignee_id")
+  createdById    String     @map("created_by_id")
+  organizationId String     @map("organization_id")
+  dueDate        DateTime?  @map("due_date")
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+
+  assignee     User?        @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  createdBy    User         @relation("TaskCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Composite index for the most common query pattern: list tasks in an org filtered by status and assignee
+  @@index([organizationId, status, assigneeId], name: "idx_task_org_status_assignee")
+  @@index([assigneeId], name: "idx_task_assignee")
+  @@index([dueDate], name: "idx_task_due_date")
+  @@index([status], name: "idx_task_status")
+  @@map("tasks")
+}
