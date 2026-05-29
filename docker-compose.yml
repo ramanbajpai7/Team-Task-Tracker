@@ -1,0 +1,72 @@
+# ─── Docker Compose for Team Task Tracker API ──────────────────────────────────
+# Usage: docker compose up --build
+# API will be available at: http://localhost:3000
+# Swagger docs: http://localhost:3000/api-docs
+
+services:
+  # ─── API Server ────────────────────────────────────────────────────────────
+  api:
+    build: .
+    container_name: task-tracker-api
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://tracker:tracker@postgres:5432/task_tracker
+      REDIS_URL: redis://redis:6379
+      JWT_ACCESS_SECRET: super-secure-access-secret-for-production-change-me
+      JWT_REFRESH_SECRET: super-secure-refresh-secret-for-production-change-me
+      JWT_ACCESS_EXPIRY: 15m
+      JWT_REFRESH_EXPIRY: 7d
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    # Run migrations, seed, then start the server
+    command: >
+      sh -c "
+        npx prisma migrate deploy --schema=./src/prisma/schema.prisma &&
+        node -e \"require('./dist/prisma/seed.js')\" 2>/dev/null;
+        node dist/server.js
+      "
+
+  # ─── PostgreSQL ────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: task-tracker-postgres
+    environment:
+      POSTGRES_USER: tracker
+      POSTGRES_PASSWORD: tracker
+      POSTGRES_DB: task_tracker
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tracker -d task_tracker"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ─── Redis ─────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: task-tracker-redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:
