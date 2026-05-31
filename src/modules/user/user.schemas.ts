@@ -1,8 +1,5 @@
 import { z } from 'zod';
 
-/**
- * Schema for creating a user (ADMIN adds members to their org).
- */
 export const createUserSchema = z.object({
   email: z.string().email('Invalid email format'),
   password: z
@@ -17,9 +14,6 @@ export const createUserSchema = z.object({
   }),
 });
 
-/**
- * Schema for updating a user.
- */
 export const updateUserSchema = z
   .object({
     name: z.string().min(1).max(100).optional(),
@@ -33,9 +27,6 @@ export const updateUserSchema = z
     message: 'At least one field must be provided for update',
   });
 
-/**
- * Schema for user ID param.
- */
 export const userIdParamSchema = z.object({
   id: z.string().uuid('Invalid user ID format'),
 });

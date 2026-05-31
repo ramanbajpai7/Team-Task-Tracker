@@ -4,20 +4,17 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Seeding database...');
+  console.log('Seeding database...');
 
-  // Clean existing data
   await prisma.task.deleteMany();
   await prisma.user.deleteMany();
   await prisma.organization.deleteMany();
 
-  // Create organization
   const org = await prisma.organization.create({
     data: { name: 'Acme Corp' },
   });
-  console.log(`  ✅ Organization: ${org.name}`);
+  console.log(`Organization: ${org.name}`);
 
-  // Create users
   const passwordHash = await bcrypt.hash('Password1', 12);
 
   const admin = await prisma.user.create({
@@ -60,10 +57,9 @@ async function main() {
     },
   });
 
-  console.log('  ✅ Users: admin@acme.com, manager@acme.com, member1@acme.com, member2@acme.com');
-  console.log('  🔑 All passwords: Password1');
+  console.log('Users: admin@acme.com, manager@acme.com, member1@acme.com, member2@acme.com');
+  console.log('All passwords: Password1');
 
-  // Create sample tasks
   const tasks = await Promise.all([
     prisma.task.create({
       data: {
@@ -74,7 +70,7 @@ async function main() {
         assigneeId: member1.id,
         createdById: manager.id,
         organizationId: org.id,
-        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       },
     }),
     prisma.task.create({
@@ -86,7 +82,7 @@ async function main() {
         assigneeId: member2.id,
         createdById: manager.id,
         organizationId: org.id,
-        dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days from now
+        dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
       },
     }),
     prisma.task.create({
@@ -98,7 +94,7 @@ async function main() {
         assigneeId: member1.id,
         createdById: admin.id,
         organizationId: org.id,
-        dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 2 days from now
+        dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
       },
     }),
     prisma.task.create({
@@ -110,7 +106,7 @@ async function main() {
         assigneeId: member2.id,
         createdById: manager.id,
         organizationId: org.id,
-        dueDate: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000), // 21 days from now
+        dueDate: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000),
       },
     }),
     prisma.task.create({
@@ -122,7 +118,7 @@ async function main() {
         assigneeId: member1.id,
         createdById: admin.id,
         organizationId: org.id,
-        dueDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // Overdue: 1 day ago
+        dueDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
       },
     }),
     prisma.task.create({
@@ -139,13 +135,13 @@ async function main() {
     }),
   ]);
 
-  console.log(`  ✅ Tasks: ${tasks.length} sample tasks created`);
-  console.log('\n✅ Seeding complete!\n');
+  console.log(`Tasks: ${tasks.length} sample tasks created`);
+  console.log('Seeding complete');
 }
 
 main()
   .catch((e) => {
-    console.error('❌ Seeding failed:', e);
+    console.error('Seeding failed:', e);
     process.exit(1);
   })
   .finally(async () => {

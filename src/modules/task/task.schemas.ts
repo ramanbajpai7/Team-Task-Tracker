@@ -1,8 +1,5 @@
 import { z } from 'zod';
 
-/**
- * Schema for creating a task.
- */
 export const createTaskSchema = z.object({
   title: z.string().min(1, 'Title is required').max(255, 'Title must be 255 characters or fewer'),
   description: z.string().max(5000, 'Description must be 5000 characters or fewer').optional(),
@@ -26,9 +23,6 @@ export const createTaskSchema = z.object({
     ),
 });
 
-/**
- * Schema for updating a task.
- */
 export const updateTaskSchema = z
   .object({
     title: z.string().min(1).max(255).optional(),
@@ -49,9 +43,6 @@ export const updateTaskSchema = z
     message: 'At least one field must be provided for update',
   });
 
-/**
- * Schema for updating task status.
- */
 export const updateTaskStatusSchema = z.object({
   status: z.enum(['TODO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE', 'BLOCKED'], {
     errorMap: () => ({
@@ -60,9 +51,6 @@ export const updateTaskStatusSchema = z.object({
   }),
 });
 
-/**
- * Schema for task list query parameters.
- */
 export const listTasksQuerySchema = z.object({
   page: z
     .string()
@@ -81,9 +69,6 @@ export const listTasksQuerySchema = z.object({
   assignee: z.string().uuid('Invalid assignee ID format').optional(),
 });
 
-/**
- * Schema for task ID param.
- */
 export const taskIdParamSchema = z.object({
   id: z.string().uuid('Invalid task ID format'),
 });

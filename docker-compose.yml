@@ -1,10 +1,4 @@
-# ─── Docker Compose for Team Task Tracker API ──────────────────────────────────
-# Usage: docker compose up --build
-# API will be available at: http://localhost:3000
-# Swagger docs: http://localhost:3000/api-docs
-
 services:
-  # ─── API Server ────────────────────────────────────────────────────────────
   api:
     build: .
     container_name: task-tracker-api
@@ -25,7 +19,6 @@ services:
       redis:
         condition: service_healthy
     restart: unless-stopped
-    # Run migrations, seed, then start the server
     command: >
       sh -c "
         npx prisma migrate deploy --schema=./src/prisma/schema.prisma &&
@@ -33,7 +26,6 @@ services:
         node dist/server.js
       "
 
-  # ─── PostgreSQL ────────────────────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
     container_name: task-tracker-postgres
@@ -52,7 +44,6 @@ services:
       retries: 5
     restart: unless-stopped
 
-  # ─── Redis ─────────────────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
     container_name: task-tracker-redis

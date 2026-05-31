@@ -19,7 +19,7 @@ export function getRedisClient(): Redis {
     });
 
     redis.on('connect', () => {
-      console.log('✅ Redis connected');
+      console.log('Redis connected');
     });
   }
 

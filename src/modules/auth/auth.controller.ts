@@ -1,9 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { authService } from './auth.service';
 
-/**
- * Auth controller — thin layer that delegates to auth service.
- */
 export class AuthController {
   async register(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {

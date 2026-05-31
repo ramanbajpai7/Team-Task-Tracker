@@ -2,14 +2,6 @@ import request from 'supertest';
 import app from '../src/app';
 import prisma from '../src/config/database';
 
-/**
- * Auth module integration tests.
- * Tests registration, login, token refresh, and logout flows.
- * 
- * Note: These tests require a running PostgreSQL instance.
- * Run with: npm test
- */
-
 const TEST_USER = {
   email: `test-${Date.now()}@example.com`,
   password: 'TestPass1',
@@ -21,12 +13,10 @@ let accessToken: string;
 let refreshToken: string;
 
 beforeAll(async () => {
-  // Ensure clean state
   await prisma.$connect();
 });
 
 afterAll(async () => {
-  // Cleanup test data
   try {
     const user = await prisma.user.findUnique({ where: { email: TEST_USER.email } });
     if (user) {
@@ -133,11 +123,9 @@ describe('POST /api/auth/refresh', () => {
     expect(res.body.data).toHaveProperty('refreshToken');
     expect(res.body.data.user.email).toBe(TEST_USER.email);
 
-    // Store new tokens for subsequent tests
     accessToken = res.body.data.accessToken;
     refreshToken = res.body.data.refreshToken;
 
-    // Verify new access token works for authenticated requests
     const authCheck = await request(app)
       .get('/api/users')
       .set('Authorization', `Bearer ${accessToken}`);

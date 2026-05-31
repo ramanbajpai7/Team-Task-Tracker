@@ -2,13 +2,6 @@ import request from 'supertest';
 import app from '../src/app';
 import prisma from '../src/config/database';
 
-/**
- * Task module integration tests.
- * Tests CRUD, status transitions, RBAC, pagination, and filtering.
- * 
- * Note: These tests require a running PostgreSQL instance.
- */
-
 let adminToken: string;
 let managerToken: string;
 let memberToken: string;
@@ -21,7 +14,6 @@ const timestamp = Date.now();
 beforeAll(async () => {
   await prisma.$connect();
 
-  // Register admin (creates org)
   const adminRes = await request(app).post('/api/auth/register').send({
     email: `tasktest-admin-${timestamp}@example.com`,
     password: 'TestPass1',
@@ -31,8 +23,7 @@ beforeAll(async () => {
   adminToken = adminRes.body.data.accessToken;
   orgId = adminRes.body.data.user.organizationId;
 
-  // Create manager via admin
-  const managerRes = await request(app)
+  await request(app)
     .post('/api/users')
     .set('Authorization', `Bearer ${adminToken}`)
     .send({
@@ -41,15 +32,13 @@ beforeAll(async () => {
       name: 'Task Manager',
       role: 'MANAGER',
     });
-  
-  // Login as manager to get token
+
   const managerLoginRes = await request(app).post('/api/auth/login').send({
     email: `tasktest-manager-${timestamp}@example.com`,
     password: 'TestPass1',
   });
   managerToken = managerLoginRes.body.data.accessToken;
 
-  // Create member via admin
   const memberRes = await request(app)
     .post('/api/users')
     .set('Authorization', `Bearer ${adminToken}`)
@@ -61,7 +50,6 @@ beforeAll(async () => {
     });
   memberId = memberRes.body.data.id;
 
-  // Login as member
   const memberLoginRes = await request(app).post('/api/auth/login').send({
     email: `tasktest-member-${timestamp}@example.com`,
     password: 'TestPass1',
@@ -70,7 +58,6 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  // Cleanup
   try {
     await prisma.task.deleteMany({ where: { organizationId: orgId } });
     await prisma.user.deleteMany({ where: { organizationId: orgId } });
@@ -231,7 +218,7 @@ describe('PATCH /api/tasks/:id (Update)', () => {
 });
 
 describe('PATCH /api/tasks/:id/status (Status transitions)', () => {
-  it('should transition TODO → IN_PROGRESS', async () => {
+  it('should transition TODO -> IN_PROGRESS', async () => {
     const res = await request(app)
       .patch(`/api/tasks/${taskId}/status`)
       .set('Authorization', `Bearer ${adminToken}`)
@@ -241,7 +228,7 @@ describe('PATCH /api/tasks/:id/status (Status transitions)', () => {
     expect(res.body.data.status).toBe('IN_PROGRESS');
   });
 
-  it('should transition IN_PROGRESS → IN_REVIEW', async () => {
+  it('should transition IN_PROGRESS -> IN_REVIEW', async () => {
     const res = await request(app)
       .patch(`/api/tasks/${taskId}/status`)
       .set('Authorization', `Bearer ${adminToken}`)
@@ -251,7 +238,7 @@ describe('PATCH /api/tasks/:id/status (Status transitions)', () => {
     expect(res.body.data.status).toBe('IN_REVIEW');
   });
 
-  it('should transition IN_REVIEW → DONE', async () => {
+  it('should transition IN_REVIEW -> DONE', async () => {
     const res = await request(app)
       .patch(`/api/tasks/${taskId}/status`)
       .set('Authorization', `Bearer ${adminToken}`)
@@ -261,7 +248,7 @@ describe('PATCH /api/tasks/:id/status (Status transitions)', () => {
     expect(res.body.data.status).toBe('DONE');
   });
 
-  it('should reject invalid transition DONE → IN_PROGRESS', async () => {
+  it('should reject invalid transition DONE -> IN_PROGRESS', async () => {
     const res = await request(app)
       .patch(`/api/tasks/${taskId}/status`)
       .set('Authorization', `Bearer ${adminToken}`)
@@ -272,7 +259,6 @@ describe('PATCH /api/tasks/:id/status (Status transitions)', () => {
   });
 
   it('should allow transition to BLOCKED from active state', async () => {
-    // Create a new task for this test
     const createRes = await request(app)
       .post('/api/tasks')
       .set('Authorization', `Bearer ${adminToken}`)
@@ -280,13 +266,11 @@ describe('PATCH /api/tasks/:id/status (Status transitions)', () => {
 
     const newTaskId = createRes.body.data.id;
 
-    // TODO → IN_PROGRESS first
     await request(app)
       .patch(`/api/tasks/${newTaskId}/status`)
       .set('Authorization', `Bearer ${adminToken}`)
       .send({ status: 'IN_PROGRESS' });
 
-    // IN_PROGRESS → BLOCKED
     const res = await request(app)
       .patch(`/api/tasks/${newTaskId}/status`)
       .set('Authorization', `Bearer ${adminToken}`)
@@ -297,7 +281,6 @@ describe('PATCH /api/tasks/:id/status (Status transitions)', () => {
   });
 
   it('MEMBER assignee can change status of their task', async () => {
-    // Create a task assigned to member
     const createRes = await request(app)
       .post('/api/tasks')
       .set('Authorization', `Bearer ${adminToken}`)

@@ -1,9 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { userService } from './user.service';
 
-/**
- * User controller — thin layer that delegates to user service.
- */
 export class UserController {
   async list(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {

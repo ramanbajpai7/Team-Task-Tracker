@@ -1,16 +1,3 @@
-/**
- * Custom application error class for consistent error responses.
- * 
- * All errors thrown in the application should use this class or its subclasses
- * to ensure the global error handler can format them correctly.
- * 
- * Response format:
- * {
- *   "status": 400,
- *   "code": "VALIDATION_ERROR",
- *   "message": "due_date must be a future date"
- * }
- */
 export class AppError extends Error {
   public readonly status: number;
   public readonly code: string;
@@ -24,8 +11,6 @@ export class AppError extends Error {
     Object.setPrototypeOf(this, AppError.prototype);
   }
 }
-
-// ─── Pre-defined Error Factories ──────────────────────────────────────────────
 
 export class ValidationError extends AppError {
   constructor(message: string) {

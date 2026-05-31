@@ -1,9 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { taskService } from './task.service';
 
-/**
- * Task controller — thin layer that delegates to task service.
- */
 export class TaskController {
   async create(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {

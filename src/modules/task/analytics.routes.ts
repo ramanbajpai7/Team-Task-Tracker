@@ -6,9 +6,6 @@ import { authorize } from '../../middleware/rbac.middleware';
 
 const router = Router();
 
-/**
- * Analytics routes — ADMIN and MANAGER only.
- */
 router.get(
   '/tasks',
   authenticate,

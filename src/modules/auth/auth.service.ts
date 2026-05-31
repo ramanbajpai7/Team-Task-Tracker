@@ -12,17 +12,8 @@ import { JwtPayload } from '../../middleware/auth.middleware';
 
 const SALT_ROUNDS = 12;
 
-/**
- * Authentication service.
- * Handles user registration, login, token refresh, and logout.
- */
 export class AuthService {
-  /**
-   * Register a new user.
-   * The first user creates a new organization and becomes its ADMIN.
-   */
   async register(input: RegisterInput) {
-    // Check for existing user
     const existingUser = await prisma.user.findUnique({
       where: { email: input.email },
     });
@@ -31,17 +22,13 @@ export class AuthService {
       throw new ConflictError('A user with this email already exists');
     }
 
-    // Hash password
     const passwordHash = await bcrypt.hash(input.password, SALT_ROUNDS);
 
-    // Create organization and user in a transaction
     const result = await prisma.$transaction(async (tx) => {
-      // Create the organization
       const organization = await tx.organization.create({
         data: { name: input.organizationName },
       });
 
-      // First user is ADMIN
       const user = await tx.user.create({
         data: {
           email: input.email,
@@ -55,7 +42,6 @@ export class AuthService {
       return { user, organization };
     });
 
-    // Generate tokens
     const tokens = this.generateTokens({
       userId: result.user.id,
       email: result.user.email,
@@ -63,7 +49,6 @@ export class AuthService {
       organizationId: result.user.organizationId,
     });
 
-    // Store refresh token hash
     const refreshTokenHash = await bcrypt.hash(tokens.refreshToken, SALT_ROUNDS);
     await prisma.user.update({
       where: { id: result.user.id },
@@ -83,9 +68,6 @@ export class AuthService {
     };
   }
 
-  /**
-   * Login with email and password.
-   */
   async login(input: LoginInput) {
     const user = await prisma.user.findUnique({
       where: { email: input.email },
@@ -102,7 +84,6 @@ export class AuthService {
       throw new UnauthorizedError('Invalid email or password');
     }
 
-    // Generate tokens
     const tokens = this.generateTokens({
       userId: user.id,
       email: user.email,
@@ -110,7 +91,6 @@ export class AuthService {
       organizationId: user.organizationId,
     });
 
-    // Store refresh token hash
     const refreshTokenHash = await bcrypt.hash(tokens.refreshToken, SALT_ROUNDS);
     await prisma.user.update({
       where: { id: user.id },
@@ -130,12 +110,7 @@ export class AuthService {
     };
   }
 
-  /**
-   * Refresh access token using a valid refresh token.
-   * Implements token rotation — old refresh token is invalidated.
-   */
   async refresh(refreshToken: string) {
-    // Verify the refresh token
     let decoded: JwtPayload;
     try {
       decoded = jwt.verify(refreshToken, config.jwt.refreshSecret) as JwtPayload;
@@ -143,7 +118,6 @@ export class AuthService {
       throw new UnauthorizedError('Invalid or expired refresh token');
     }
 
-    // Find user and verify stored refresh token hash
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
       include: { organization: true },
@@ -156,7 +130,7 @@ export class AuthService {
     const isRefreshTokenValid = await bcrypt.compare(refreshToken, user.refreshTokenHash);
 
     if (!isRefreshTokenValid) {
-      // Possible token reuse attack — invalidate all sessions
+      // Possible token reuse attack -- invalidate all sessions
       await prisma.user.update({
         where: { id: user.id },
         data: { refreshTokenHash: null },
@@ -164,7 +138,6 @@ export class AuthService {
       throw new UnauthorizedError('Refresh token has been revoked. Please login again.');
     }
 
-    // Generate new token pair (rotation)
     const tokens = this.generateTokens({
       userId: user.id,
       email: user.email,
@@ -172,7 +145,6 @@ export class AuthService {
       organizationId: user.organizationId,
     });
 
-    // Store new refresh token hash
     const newRefreshTokenHash = await bcrypt.hash(tokens.refreshToken, SALT_ROUNDS);
     await prisma.user.update({
       where: { id: user.id },
@@ -192,9 +164,6 @@ export class AuthService {
     };
   }
 
-  /**
-   * Logout — invalidate the refresh token.
-   */
   async logout(userId: string) {
     const user = await prisma.user.findUnique({ where: { id: userId } });
 
@@ -208,9 +177,6 @@ export class AuthService {
     });
   }
 
-  /**
-   * Generate access and refresh token pair.
-   */
   private generateTokens(payload: JwtPayload) {
     const accessToken = jwt.sign(payload, config.jwt.accessSecret, {
       expiresIn: config.jwt.accessExpiry,

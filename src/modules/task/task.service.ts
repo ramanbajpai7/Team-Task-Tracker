@@ -20,21 +20,21 @@ import {
   invalidateOrgTaskCache,
 } from '../../utils/cache';
 
-/**
- * Task management service.
- * Handles CRUD, status transitions, pagination, filtering, and Redis caching.
- */
+const TASK_INCLUDE = {
+  assignee: {
+    select: { id: true, name: true, email: true },
+  },
+  createdBy: {
+    select: { id: true, name: true, email: true },
+  },
+} as const;
+
 export class TaskService {
-  /**
-   * Create a new task.
-   * Only ADMIN and MANAGER can create tasks.
-   */
   async createTask(
     input: CreateTaskInput,
     createdById: string,
     organizationId: string
   ) {
-    // If assignee is specified, verify they belong to the same org
     if (input.assigneeId) {
       const assignee = await prisma.user.findFirst({
         where: { id: input.assigneeId, organizationId },
@@ -54,27 +54,14 @@ export class TaskService {
         createdById,
         organizationId,
       },
-      include: {
-        assignee: {
-          select: { id: true, name: true, email: true },
-        },
-        createdBy: {
-          select: { id: true, name: true, email: true },
-        },
-      },
+      include: TASK_INCLUDE,
     });
 
-    // Invalidate cached task lists for this org
     await invalidateOrgTaskCache(organizationId);
 
     return task;
   }
 
-  /**
-   * List tasks with pagination and filtering.
-   * MEMBER can only see tasks assigned to them.
-   * Results are cached in Redis.
-   */
   async listTasks(
     query: ListTasksQuery,
     userId: string,
@@ -83,10 +70,9 @@ export class TaskService {
   ) {
     const { page, limit, status, priority, assignee } = query;
 
-    // MEMBER restriction: can only see their own tasks
+    // MEMBER can only see their own tasks
     const effectiveAssignee = userRole === Role.MEMBER ? userId : assignee;
 
-    // Try cache first
     const cacheKey = buildTaskListCacheKey({
       organizationId,
       assigneeId: effectiveAssignee,
@@ -101,7 +87,6 @@ export class TaskService {
       return cached;
     }
 
-    // Build where clause
     const where: Prisma.TaskWhereInput = {
       organizationId,
     };
@@ -118,19 +103,11 @@ export class TaskService {
       where.priority = priority as Prisma.EnumPriorityFilter;
     }
 
-    // Execute count and find in parallel
     const [total, tasks] = await Promise.all([
       prisma.task.count({ where }),
       prisma.task.findMany({
         where,
-        include: {
-          assignee: {
-            select: { id: true, name: true, email: true },
-          },
-          createdBy: {
-            select: { id: true, name: true, email: true },
-          },
-        },
+        include: TASK_INCLUDE,
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
@@ -149,34 +126,21 @@ export class TaskService {
       },
     };
 
-    // Cache the result
     await setCachedData(cacheKey, result);
 
     return result;
   }
 
-  /**
-   * Get a single task by ID.
-   * MEMBER can only see tasks assigned to them.
-   */
   async getTaskById(taskId: string, userId: string, userRole: string, organizationId: string) {
     const task = await prisma.task.findFirst({
       where: { id: taskId, organizationId },
-      include: {
-        assignee: {
-          select: { id: true, name: true, email: true },
-        },
-        createdBy: {
-          select: { id: true, name: true, email: true },
-        },
-      },
+      include: TASK_INCLUDE,
     });
 
     if (!task) {
       throw new NotFoundError('Task');
     }
 
-    // MEMBER can only view tasks assigned to them
     if (userRole === Role.MEMBER && task.assigneeId !== userId) {
       throw new ForbiddenError('You can only view tasks assigned to you');
     }
@@ -184,10 +148,6 @@ export class TaskService {
     return task;
   }
 
-  /**
-   * Update a task's fields (not status).
-   * ADMIN and MANAGER only.
-   */
   async updateTask(
     taskId: string,
     input: UpdateTaskInput,
@@ -201,7 +161,6 @@ export class TaskService {
       throw new NotFoundError('Task');
     }
 
-    // If assignee is being changed, verify new assignee is in the org
     if (input.assigneeId) {
       const assignee = await prisma.user.findFirst({
         where: { id: input.assigneeId, organizationId },
@@ -222,26 +181,14 @@ export class TaskService {
           dueDate: input.dueDate ? new Date(input.dueDate) : null,
         }),
       },
-      include: {
-        assignee: {
-          select: { id: true, name: true, email: true },
-        },
-        createdBy: {
-          select: { id: true, name: true, email: true },
-        },
-      },
+      include: TASK_INCLUDE,
     });
 
-    // Invalidate cache
     await invalidateOrgTaskCache(organizationId);
 
     return updatedTask;
   }
 
-  /**
-   * Update task status with enforced transitions.
-   * Only the assignee or a MANAGER/ADMIN can advance a task's status.
-   */
   async updateTaskStatus(
     taskId: string,
     input: UpdateTaskStatusInput,
@@ -257,7 +204,6 @@ export class TaskService {
       throw new NotFoundError('Task');
     }
 
-    // Permission check: only assignee or MANAGER/ADMIN can change status
     const isAssignee = task.assigneeId === userId;
     const isManagerOrAdmin = userRole === Role.ADMIN || userRole === Role.MANAGER;
 
@@ -265,7 +211,6 @@ export class TaskService {
       throw new ForbiddenError('Only the assignee or a MANAGER/ADMIN can change task status');
     }
 
-    // Validate status transition
     const newStatus = input.status as TaskStatus;
     if (!isValidTransition(task.status, newStatus)) {
       throw new InvalidTransitionError(task.status, newStatus);
@@ -274,26 +219,14 @@ export class TaskService {
     const updatedTask = await prisma.task.update({
       where: { id: taskId },
       data: { status: newStatus },
-      include: {
-        assignee: {
-          select: { id: true, name: true, email: true },
-        },
-        createdBy: {
-          select: { id: true, name: true, email: true },
-        },
-      },
+      include: TASK_INCLUDE,
     });
 
-    // Invalidate cache
     await invalidateOrgTaskCache(organizationId);
 
     return updatedTask;
   }
 
-  /**
-   * Delete a task.
-   * ADMIN and MANAGER only.
-   */
   async deleteTask(taskId: string, organizationId: string) {
     const task = await prisma.task.findFirst({
       where: { id: taskId, organizationId },
@@ -307,15 +240,10 @@ export class TaskService {
       where: { id: taskId },
     });
 
-    // Invalidate cache
     await invalidateOrgTaskCache(organizationId);
   }
 
-  /**
-   * Get analytics: overdue task count per user + average completion time.
-   */
   async getAnalytics(organizationId: string) {
-    // Overdue tasks per user
     const overdueTasks = await prisma.task.groupBy({
       by: ['assigneeId'],
       where: {
@@ -327,7 +255,6 @@ export class TaskService {
       _count: { id: true },
     });
 
-    // Enrich with user details
     const userIds = overdueTasks
       .map((t) => t.assigneeId)
       .filter((id): id is string => id !== null);
@@ -346,7 +273,6 @@ export class TaskService {
       overdueCount: t._count.id,
     }));
 
-    // Average completion time (for tasks that reached DONE)
     const completedTasks = await prisma.task.findMany({
       where: {
         organizationId,

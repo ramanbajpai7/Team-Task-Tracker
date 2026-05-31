@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,8 +6,6 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
-
-// ─── Enums ────────────────────────────────────────────────────────────────────
 
 enum Role {
   ADMIN
@@ -31,8 +26,6 @@ enum TaskStatus {
   DONE
   BLOCKED
 }
-
-// ─── Models ───────────────────────────────────────────────────────────────────
 
 model Organization {
   id        String   @id @default(uuid())
@@ -82,7 +75,6 @@ model Task {
   createdBy    User         @relation("TaskCreator", fields: [createdById], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  // Composite index for the most common query pattern: list tasks in an org filtered by status and assignee
   @@index([organizationId, status, assigneeId], name: "idx_task_org_status_assignee")
   @@index([assigneeId], name: "idx_task_assignee")
   @@index([dueDate], name: "idx_task_due_date")

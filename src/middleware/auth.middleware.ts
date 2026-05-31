@@ -3,9 +3,6 @@ import jwt from 'jsonwebtoken';
 import { config } from '../config';
 import { UnauthorizedError } from '../utils/errors';
 
-/**
- * JWT payload shape attached to authenticated requests.
- */
 export interface JwtPayload {
   userId: string;
   email: string;
@@ -13,9 +10,6 @@ export interface JwtPayload {
   organizationId: string;
 }
 
-/**
- * Extend Express Request to include authenticated user data.
- */
 declare global {
   namespace Express {
     interface Request {
@@ -24,14 +18,6 @@ declare global {
   }
 }
 
-/**
- * Authentication middleware.
- * 
- * Extracts the JWT access token from the Authorization header,
- * verifies it, and attaches the decoded payload to `req.user`.
- * 
- * Must be applied before any route that requires authentication.
- */
 export function authenticate(req: Request, _res: Response, next: NextFunction): void {
   try {
     const authHeader = req.headers.authorization;

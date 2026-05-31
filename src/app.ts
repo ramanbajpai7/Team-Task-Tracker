@@ -7,7 +7,6 @@ import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger';
 import { errorHandler } from './middleware/error.middleware';
 
-// Route imports
 import authRoutes from './modules/auth/auth.routes';
 import userRoutes from './modules/user/user.routes';
 import taskRoutes from './modules/task/task.routes';
@@ -15,35 +14,21 @@ import analyticsRoutes from './modules/task/analytics.routes';
 
 const app = express();
 
-// ─── Global Middleware ────────────────────────────────────────────────────────
-
-// Security headers
 app.use(helmet());
-
-// CORS
 app.use(cors());
-
-// Request logging
 app.use(morgan('dev'));
-
-// Body parsing
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// ─── API Documentation ───────────────────────────────────────────────────────
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
   customCss: '.swagger-ui .topbar { display: none }',
   customSiteTitle: 'Team Task Tracker API Docs',
 }));
 
-// Serve raw OpenAPI spec as JSON
 app.get('/api-docs.json', (_req, res) => {
   res.setHeader('Content-Type', 'application/json');
   res.send(swaggerSpec);
 });
-
-// ─── Health Check ─────────────────────────────────────────────────────────────
 
 /**
  * @swagger
@@ -63,14 +48,10 @@ app.get('/api/health', (_req, res) => {
   });
 });
 
-// ─── Routes ───────────────────────────────────────────────────────────────────
-
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/analytics', analyticsRoutes);
-
-// ─── 404 Handler ──────────────────────────────────────────────────────────────
 
 app.use((_req, res) => {
   res.status(404).json({
@@ -79,8 +60,6 @@ app.use((_req, res) => {
     message: 'The requested endpoint does not exist',
   });
 });
-
-// ─── Global Error Handler (must be last) ──────────────────────────────────────
 
 app.use(errorHandler);
 

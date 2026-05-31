@@ -8,7 +8,6 @@ import { createUserSchema, updateUserSchema, userIdParamSchema } from './user.sc
 
 const router = Router();
 
-// All user management routes require ADMIN role — enforced at middleware level
 /**
  * @swagger
  * /users:
