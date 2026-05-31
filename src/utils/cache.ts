@@ -1,4 +1,4 @@
-import { getRedisClient, isRedisAvailable } from '../config/redis';
+import { getRedisClient } from '../config/redis';
 import { CACHE_TTL, CACHE_PREFIX } from './constants';
 
 export function buildTaskListCacheKey(params: {
@@ -22,10 +22,8 @@ export function buildTaskListCacheKey(params: {
 }
 
 export async function getCachedData<T>(key: string): Promise<T | null> {
-  if (!isRedisAvailable()) return null;
   try {
     const redis = getRedisClient();
-    if (!redis) return null;
     const data = await redis.get(key);
     if (data) {
       return JSON.parse(data) as T;
@@ -38,10 +36,8 @@ export async function getCachedData<T>(key: string): Promise<T | null> {
 }
 
 export async function setCachedData(key: string, data: unknown, ttl = CACHE_TTL): Promise<void> {
-  if (!isRedisAvailable()) return;
   try {
     const redis = getRedisClient();
-    if (!redis) return;
     await redis.setex(key, ttl, JSON.stringify(data));
   } catch (error) {
     console.error('Cache SET error:', error);
@@ -50,10 +46,8 @@ export async function setCachedData(key: string, data: unknown, ttl = CACHE_TTL)
 
 // Invalidate all cached task lists for an org using SCAN + DEL
 export async function invalidateOrgTaskCache(organizationId: string): Promise<void> {
-  if (!isRedisAvailable()) return;
   try {
     const redis = getRedisClient();
-    if (!redis) return;
     const pattern = `${CACHE_PREFIX}:org:${organizationId}:*`;
 
     let cursor = '0';
